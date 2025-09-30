@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development node --watch src/index.js",
     "prod": "cross-env NODE_ENV=production node --watch src/index.js",
+    "linux:dev": "NODE_ENV=development node src/index.js",
     "linux:prod": "NODE_ENV=production node src/index.js",
     "lint": "standard --fix"
   },
