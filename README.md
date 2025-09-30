@@ -41,6 +41,12 @@ Levantar la API conectándose al 4D de producción
 npm run prod
 ```
 
+Levantar la API conectándose al 4D de desarrollo desde linux
+
+```sh
+npm run linux:dev
+```
+
 Levantar la API conectándose al 4D de producción desde linux
 
 ```sh
