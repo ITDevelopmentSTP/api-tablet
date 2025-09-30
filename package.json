@@ -1,0 +1,29 @@
+{
+  "name": "api-tablet",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development node --watch src/index.js",
+    "prod": "cross-env NODE_ENV=production node --watch src/index.js",
+    "linux:prod": "NODE_ENV=production node src/index.js",
+    "lint": "standard --fix"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "1.11.0",
+    "cors": "2.8.5",
+    "express": "5.1.0",
+    "jsonwebtoken": "9.0.2"
+  },
+  "devDependencies": {
+    "cross-env": "10.0.0",
+    "standard": "17.1.2"
+  },
+  "eslintConfig": {
+    "extends": "standard"
+  }
+}
