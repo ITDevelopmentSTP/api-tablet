@@ -4,3 +4,4 @@ node_modules/
 # envs
 .env
 .env.dev
+logs/

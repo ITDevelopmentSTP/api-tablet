@@ -1,5 +1,9 @@
-const fs = require('fs')
-const path = require('path')
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const logger = (req, res, next) => {
   const timestamp = new Date().toISOString()
@@ -90,5 +94,5 @@ const cleanupOldLogs = (daysToKeep = 7) => {
   }
 }
 // exportar también la función de limpieza por si se quiere invocar desde otro módulo
-module.exports = logger
-module.exports.cleanupOldLogs = cleanupOldLogs
+export default logger
+export { cleanupOldLogs }
