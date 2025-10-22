@@ -1,20 +1,94 @@
-// Logger middleware sencillo en ESM
-// Registra método, ruta, IP y tiempo, y al finalizar la respuesta registra el código de estado.
+const fs = require('fs')
+const path = require('path')
 
-export default function logger (req, res, next) {
-  const start = Date.now()
+const logger = (req, res, next) => {
   const timestamp = new Date().toISOString()
-  const { method, originalUrl } = req
-  const ip = req.ip || req.connection?.remoteAddress || 'unknown'
+  const logEntry = {
+    timestamp,
+    method: req.method,
+    url: req.originalUrl,
+    ip: req.ip,
+    headers: req.headers,
+    body: req.body
+  }
 
-  console.log(`[${timestamp}] ${ip} -> ${method} ${originalUrl}`)
+  // Logger consola
+  console.log('----------------------------------------')
+  console.log(`[${timestamp}] ${req.method} ${req.originalUrl} - IP: ${req.ip}`)
+  console.log('Headers:')
+  console.log(JSON.stringify(req.headers, null, 2))
+  console.log('Body:')
+  try {
+    console.log(JSON.stringify(req.body, null, 2))
+  } catch (e) {
+    // If body contains circular references or non-serializable data
+    console.log(String(req.body))
+  }
+  console.log('----------------------------------------')
 
-  res.on('finish', () => {
-    const duration = Date.now() - start
-    console.log(
-      `[${timestamp}] ${method} ${originalUrl} ${res.statusCode} body: ${JSON.stringify(req.body)} - ${duration}ms`
-    )
-  })
+  // Logger archivo
+  writeLogToFile(logEntry)
 
   next()
 }
+
+// Funcion pra escribir logs en archivo
+const writeLogToFile = (logEntry) => {
+  try {
+    const logsDir = path.join(__dirname, '../logs')
+
+    // si no existe el directorio, crearlo
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true })
+    }
+    const logFileName = `logs-${new Date().toISOString().split('T')[0]}.txt`
+    const logFilePath = path.join(logsDir, logFileName)
+
+    // Formato
+    const logLine = [
+      '=== LOG ENTRY ===',
+      `Timestamp: ${logEntry.timestamp}`,
+      `Method: ${logEntry.method}`,
+      `URL: ${logEntry.url}`,
+      `IP: ${logEntry.ip}`,
+      'Headers:',
+      JSON.stringify(logEntry.headers, null, 2),
+      'Body:',
+      JSON.stringify(logEntry.body, null, 2),
+      '================='
+    ].join('\n') + '\n\n'
+    fs.appendFileSync(logFilePath, logLine, 'utf8')
+  } catch (error) {
+    console.error('Error escribiendo en archivo de log: ', error)
+  }
+}
+
+// Limpiar los logs antiguos
+const cleanupOldLogs = (daysToKeep = 7) => {
+  try {
+    const logsDir = path.join(__dirname, '../logs')
+    if (!fs.existsSync(logsDir)) return
+
+    const files = fs.readdirSync(logsDir)
+    const now = Date.now()
+    const millisecondsPerDay = 24 * 60 * 60 * 1000
+
+    files.forEach(file => {
+      if (file.startsWith('logs-') && file.endsWith('.txt')) {
+        const filePath = path.join(logsDir, file)
+        const stats = fs.statSync(filePath)
+        const fileAge = now - stats.mtime.getTime()
+
+        if (fileAge > daysToKeep * millisecondsPerDay) {
+          fs.unlinkSync(filePath)
+          console.log(`🗑️ Log eliminado: ${file}`)
+        }
+      }
+    })
+  } catch (error) {
+    console.error('Error limpiando logs antiguos:', error)
+  }
+}
+// exportar también la función de limpieza por si se quiere invocar desde otro módulo
+module.exports = logger
+module.exports.cleanupOldLogs = cleanupOldLogs
