@@ -8,5 +8,10 @@ export const WebhookController = {
     } catch (error) {
       next(error)
     }
+  },
+
+  // Responder GET /test con mensaje de confirmación
+  async handleGetTest (_req, res) {
+    res.status(200).json({ message: 'Test OK: petición GET recibida correctamente' })
   }
 }
