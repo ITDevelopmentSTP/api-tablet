@@ -10,6 +10,7 @@ const app = express()
 
 // config
 app.use(express.json({ limit: '20mb' }))
+app.use(express.urlencoded({ extended: true }))
 app.use(cors())
 
 // routes
