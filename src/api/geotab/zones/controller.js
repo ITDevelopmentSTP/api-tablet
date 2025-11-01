@@ -1,6 +1,5 @@
 import Connection from '../util/Connection.js'
 import DateTime from '../util/dateTime.js'
-import Monto from '../models/Monto.js'
 
 // Mapa en memoria para recordar el último paso especial por placa
 // Clave: plate | Valor: id_zona del último paso especial pendiente
@@ -101,22 +100,6 @@ export const zonesController = {
       next(error)
     } finally {
       await conn.close()
-    }
-  },
-  /*
-  * Registrar monto por placa
-  * POST /geotab/zones/montos
-  * Body: { plate: string, startDate: ISODate, endDate: ISODate }
-  */
-  async processData (req, res, next) {
-    const params = req.body
-    const monto = new Monto(params.plate, params.startDate, params.endDate)
-    try {
-      await monto.regSpecialCases()
-      const total = await monto.calcAmount()
-      res.json({ success: true, data: { monto, total } })
-    } catch (error) {
-      next(error)
     }
   }
 }

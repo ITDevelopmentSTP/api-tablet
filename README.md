@@ -56,3 +56,27 @@ npm run linux:prod
 ## Manejador de Errores 🏃‍♂️
 
 Todos los errores de la API llegan al archivo `error-handler.js`. Los errores más comunes ya están controlados, por lo que ahí podrás ver exáctamente qué falló.
+
+## Integración con Geotab 🚗
+
+Este proyecto incluye un módulo para integrarse con una base de datos MySQL que almacena cruces por casetas (zonas) y reglas especiales de cobro.
+
+- Rutas montadas: `app.use('/geotab', logger, geotabRoutes)`
+	- `POST /geotab/zones/toll` registra un paso en la BD vía procedimiento almacenado.
+	- `POST /geotab/webhook/test` y `GET /geotab/webhook/test` endpoints de prueba simples.
+- Logger: el middleware de logs está activo para todas las rutas bajo `/geotab`.
+
+### Endpoint: registrar paso en tiempo real
+
+POST `/geotab/zones/toll`
+
+Cuerpo esperado (JSON o x-www-form-urlencoded):
+
+```json
+{
+	"zoneId": "b15",
+	"deviceName": "ABC123", // Placa
+	"date": "Oct, 29, 2025",
+	"time": "8:38:08 PM"
+}
+```
