@@ -35,7 +35,11 @@ class DateTime {
     const isPM = time.toUpperCase().includes('PM')
     let format24h = 0
     if (isPM) {
-      format24h = 12
+      if (time.startsWith('12')) {
+        format24h = -12
+      } else {
+        format24h = 12
+      }
     }
     time = time.replace(/\s*(AM|PM)\s*/i, '') // Elimina AM/PM si existe
     let [hours, minutes, seconds] = time.split(':').map(Number)
