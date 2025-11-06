@@ -101,5 +101,35 @@ export const zonesController = {
     } finally {
       await conn.close()
     }
+  },
+  async testConnection (req, res, next) {
+    const conn = new Connection()
+    const {
+      DB_HOST,
+      DB_USER,
+      DB_PASSWORD,
+      DB_DATABASE,
+      DB_PORT
+    } = process.env
+    try {
+      const result = await conn.query('SELECT * FROM zonas LIMIT 1')
+      res.status(200).json({
+        message: 'Test OK: connection successful',
+        result,
+        env: {
+          DB_HOST,
+          DB_USER,
+          DB_DATABASE,
+          DB_PORT,
+          DB_PASSWORD: DB_PASSWORD ? '***' : undefined
+        },
+        requestBody: req.body
+      })
+    } catch (error) {
+      // Deja que el middleware de errores formatee la respuesta
+      next(error)
+    } finally {
+      await conn.close()
+    }
   }
 }

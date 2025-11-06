@@ -30,6 +30,12 @@ const ERROR_HANDLER = {
       .json({ error: true, message: 'Tiempo de conexión agotado.' })
   },
 
+  EAI_AGAIN: (res) => {
+    res
+      .status(504)
+      .json({ error: true, message: 'Resolución DNS temporalmente fallida.' })
+  },
+
   ECONNRESET: (res) => {
     res
       .status(502)
@@ -40,6 +46,28 @@ const ERROR_HANDLER = {
     res
       .status(502)
       .json({ error: true, message: 'Respuesta inválida del servidor.' })
+  },
+
+  // MySQL / DB errors comunes
+  ER_ACCESS_DENIED_ERROR: (res) => {
+    res
+      .status(500)
+      .json({ error: true, message: 'Acceso a base de datos denegado: revisa credenciales.' })
+  },
+  PROTOCOL_CONNECTION_LOST: (res) => {
+    res
+      .status(502)
+      .json({ error: true, message: 'Conexión a base de datos perdida.' })
+  },
+  PROTOCOL_SEQUENCE_TIMEOUT: (res) => {
+    res
+      .status(504)
+      .json({ error: true, message: 'Timeout comunicándose con la base de datos.' })
+  },
+  CONFIG_ERROR: (res, err) => {
+    res
+      .status(500)
+      .json({ error: true, message: err?.message || 'Configuración inválida.' })
   },
 
   /**

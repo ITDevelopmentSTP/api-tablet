@@ -10,8 +10,14 @@ const {
   DB_USER,
   DB_PASSWORD,
   DB_DATABASE,
-  DB_PORT
+  DB_PORT,
+  DB_CONNECT_TIMEOUT_MS,
+  DB_QUERY_TIMEOUT_MS
 } = process.env
+
+// Timeouts con valores por defecto razonables para evitar cuelgues largos
+const CONNECT_TIMEOUT = Number.parseInt(DB_CONNECT_TIMEOUT_MS ?? '5000', 10)
+const QUERY_TIMEOUT = Number.parseInt(DB_QUERY_TIMEOUT_MS ?? '8000', 10)
 
 class Connection {
   constructor (options = {}) {
@@ -21,6 +27,9 @@ class Connection {
       password: DB_PASSWORD,
       database: DB_DATABASE,
       port: DB_PORT,
+      connectTimeout: CONNECT_TIMEOUT,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 0,
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0
@@ -31,6 +40,16 @@ class Connection {
   // Crea el pool si no existe
   async _ensurePool () {
     if (!this.pool) {
+      // Validar configuración básica para fallar rápido y con mensaje claro
+      const missing = []
+      if (!this.config.host) missing.push('DB_HOST')
+      if (!this.config.user) missing.push('DB_USER')
+      if (!this.config.database) missing.push('DB_DATABASE')
+      if (missing.length) {
+        const err = new Error(`Variables de entorno faltantes: ${missing.join(', ')}`)
+        err.code = 'CONFIG_ERROR'
+        throw err
+      }
       this.pool = mysql.createPool(this.config)
     }
     return this.pool
@@ -41,7 +60,8 @@ class Connection {
     const pool = await this._ensurePool()
     const connection = await pool.getConnection()
     try {
-      const [rows] = await connection.query(sql, params)
+      // Aplicar timeout por consulta para evitar que se quede colgado indefinidamente
+      const [rows] = await connection.query({ sql, values: params, timeout: QUERY_TIMEOUT })
       return rows
     } catch (error) {
       console.error('Database query error:', error)
@@ -58,7 +78,7 @@ class Connection {
     try {
       const placeholders = params.map(() => '?').join(',')
       const sql = `CALL ${procName}(${placeholders})`
-      const [rows] = await connection.query(sql, params)
+      const [rows] = await connection.query({ sql, values: params, timeout: QUERY_TIMEOUT })
       return rows
     } catch (error) {
       console.error('Database procedure call error:', error)
