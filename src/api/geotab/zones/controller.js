@@ -17,7 +17,6 @@ export const zonesController = {
     const dateTime = dt.toIso(params.date, params.time)
     try {
       const result = await conn.callProcedure('sp_registrarPaso', [params.zoneId, params.deviceName, dateTime])
-
       const plate = params.deviceName
       const currentZone = params.zoneId
       const special = new Set(['b15', 'b16', 'b17'])

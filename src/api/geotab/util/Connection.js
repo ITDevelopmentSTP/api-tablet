@@ -10,81 +10,86 @@ const {
   DB_USER,
   DB_PASSWORD,
   DB_DATABASE,
-  DB_PORT,
-  DB_CONNECT_TIMEOUT_MS,
-  DB_QUERY_TIMEOUT_MS
+  DB_PORT
 } = process.env
 
 // Timeouts con valores por defecto razonables para evitar cuelgues largos
-const CONNECT_TIMEOUT = Number.parseInt(DB_CONNECT_TIMEOUT_MS ?? '5000', 10)
-const QUERY_TIMEOUT = Number.parseInt(DB_QUERY_TIMEOUT_MS ?? '8000', 10)
 
 class Connection {
   constructor (options = {}) {
     this.config = {
       host: DB_HOST,
       user: DB_USER,
-      password: DB_PASSWORD,
       database: DB_DATABASE,
-      port: DB_PORT,
-      connectTimeout: CONNECT_TIMEOUT,
-      enableKeepAlive: true,
-      keepAliveInitialDelay: 0,
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0
+      password: DB_PASSWORD,
+      port: DB_PORT
     }
-    this.pool = null
+    this.connection = null
   }
 
-  // Crea el pool si no existe
-  async _ensurePool () {
-    if (!this.pool) {
-      // Validar configuración básica para fallar rápido y con mensaje claro
-      const missing = []
-      if (!this.config.host) missing.push('DB_HOST')
-      if (!this.config.user) missing.push('DB_USER')
-      if (!this.config.database) missing.push('DB_DATABASE')
-      if (missing.length) {
-        const err = new Error(`Variables de entorno faltantes: ${missing.join(', ')}`)
-        err.code = 'CONFIG_ERROR'
+  // // Crea el pool si no existe
+  // async _ensurePool () {
+  //   if (!this.pool) {
+  //     // Validar configuración básica para fallar rápido y con mensaje claro
+  //     const missing = []
+  //     if (!this.config.host) missing.push('DB_HOST')
+  //     if (!this.config.user) missing.push('DB_USER')
+  //     if (!this.config.database) missing.push('DB_DATABASE')
+  //     if (missing.length) {
+  //       const err = new Error(`Variables de entorno faltantes: ${missing.join(', ')}`)
+  //       err.code = 'CONFIG_ERROR'
+  //       throw err
+  //     }
+  //     this.pool = mysql.createPool(this.config)
+  //   }
+  //   return this.pool
+  // }
+
+  async connect () {
+    this.connection = await mysql.createConnection({
+      host: DB_HOST,
+      user: DB_USER,
+      database: DB_DATABASE,
+      password: DB_PASSWORD,
+      port: DB_PORT
+    })
+    this.connection.connect(err => {
+      if (err) {
+        console.error('Error connecting to the database:', err)
         throw err
       }
-      this.pool = mysql.createPool(this.config)
-    }
-    return this.pool
+      console.log('Connected to the database')
+    })
   }
 
   // Ejecuta una consulta SQL (SELECT/INSERT/UPDATE/DELETE) y devuelve los resultados.
   async query (sql, params = []) {
-    const pool = await this._ensurePool()
-    const connection = await pool.getConnection()
+    await this.connect()
     try {
       // Aplicar timeout por consulta para evitar que se quede colgado indefinidamente
-      const [rows] = await connection.query({ sql, values: params, timeout: QUERY_TIMEOUT })
+      const [rows] = await this.connection.query(sql, params)
       return rows
     } catch (error) {
       console.error('Database query error:', error)
       throw error
     } finally {
-      connection.release()
+      this.connection.end()
     }
   }
 
   // Ejecuta un procedimiento almacenado. Devuelve el resultado tal cual lo retorna mysql2.
   async callProcedure (procName, params = []) {
-    const pool = await this._ensurePool()
-    const connection = await pool.getConnection()
+    await this.connect()
     try {
       const placeholders = params.map(() => '?').join(',')
       const sql = `CALL ${procName}(${placeholders})`
-      const [rows] = await connection.query({ sql, values: params, timeout: QUERY_TIMEOUT })
+      const [rows] = await this.connection.query(sql, params)
       return rows
     } catch (error) {
       console.error('Database procedure call error:', error)
       throw error
     } finally {
-      connection.release()
+      this.connection.end()
     }
   }
 
@@ -94,31 +99,30 @@ class Connection {
    * @param {(conn: import('mysql2/promise').PoolConnection) => Promise<*>} callback
    */
   async transaction (callback) {
-    const pool = await this._ensurePool()
-    const connection = await pool.getConnection()
+    await this.connect()
     try {
-      await connection.beginTransaction()
-      const result = await callback(connection)
-      await connection.commit()
+      await this.connection.beginTransaction()
+      const result = await callback(this.connection)
+      await this.connection.commit()
       return result
     } catch (err) {
       try {
-        await connection.rollback()
+        await this.connection.rollback()
       } catch (e) {
         // swallow rollback errors but log if needed
         console.error('Rollback error', e)
       }
       throw err
     } finally {
-      connection.release()
+      this.connection.end()
     }
   }
 
   // Cierra el pool de conexiones (usar al terminar la aplicación)
   async close () {
-    if (this.pool) {
-      await this.pool.end()
-      this.pool = null
+    if (this.connection) {
+      await this.connection.end()
+      this.connection = null
     }
   }
 }
