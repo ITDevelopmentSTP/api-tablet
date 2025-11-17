@@ -27,24 +27,6 @@ class Connection {
     this.connection = null
   }
 
-  // // Crea el pool si no existe
-  // async _ensurePool () {
-  //   if (!this.pool) {
-  //     // Validar configuración básica para fallar rápido y con mensaje claro
-  //     const missing = []
-  //     if (!this.config.host) missing.push('DB_HOST')
-  //     if (!this.config.user) missing.push('DB_USER')
-  //     if (!this.config.database) missing.push('DB_DATABASE')
-  //     if (missing.length) {
-  //       const err = new Error(`Variables de entorno faltantes: ${missing.join(', ')}`)
-  //       err.code = 'CONFIG_ERROR'
-  //       throw err
-  //     }
-  //     this.pool = mysql.createPool(this.config)
-  //   }
-  //   return this.pool
-  // }
-
   async connect () {
     this.connection = await mysql.createConnection({
       host: DB_HOST,

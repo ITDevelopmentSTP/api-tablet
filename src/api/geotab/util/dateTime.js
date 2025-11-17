@@ -139,6 +139,8 @@ class DateTime {
     }
 
     this.dateTime = result
+    // Ajustar a zona horaria de Panama (UTC-5)
+    this.dateTime = new Date(this.dateTime.getTime() - 5 * 60 * 60 * 1000)
     return this.dateTime
   }
 }

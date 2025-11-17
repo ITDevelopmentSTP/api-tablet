@@ -25,7 +25,6 @@ export const zonesController = {
 
       if (plate && special.has(currentZone)) {
         const prev = pendingSpecialByPlate.get(plate)
-
         if (prev) {
           // Tenemos un par previo+actual, aplicar reglas similares a regSpecialCasesmot
           // Para actualizar la fila correcta, consultamos los últimos 1-2 pasos de la placa
@@ -82,12 +81,12 @@ export const zonesController = {
       // Ejecutar actualización en tiempo real tras insertar (o tras resolver el par especial)
       // Si no fue un caso especial diferido y no se resolvió par especial,
       // marcar el último paso (recién insertado) como procesado para no re-evaluarlo.
-      if (!special.has(currentZone) && plate) {
+      if (!special.has(currentZone) && plate) { // No es especial, marcar el último paso como procesado
         const last = await conn.query(
           'SELECT id FROM pasos WHERE placa = ? AND procesado = 0 ORDER BY fechaHora DESC LIMIT 1',
           [plate]
         )
-        if (last && last.length === 1) {
+        if (last) {
           await conn.query('UPDATE pasos SET procesado = 1 WHERE id = ?', [last[0].id])
         }
       }
