@@ -3,6 +3,22 @@ import axios from '../../../config/axiosPatio.js'
 export async function getFredByLicensePlate (req, res, next) {
   try {
     const response = await axios.post('getFredByLicensePlate', req.body)
+
+    const { GEOTAB_USER, GEOTAB_PASSWORD, GEOTAB_DATABASE } = process.env
+    const geotabPayload = {
+      method: 'GetOdometer',
+      credentials: {
+        database: GEOTAB_DATABASE,
+        userName: GEOTAB_USER,
+        password: GEOTAB_PASSWORD
+      },
+      plate: req.body.placa
+    }
+    const geotabOdometer = await axios.post('geotab', geotabPayload)
+    geotabPayload.method = 'GetFuelStatus'
+    const geotabFuel = await axios.post('geotab', geotabPayload)
+    response.data.km = geotabOdometer.data.km
+    response.data.gas = geotabFuel.data.fraction
     let formattedBase64 = null
 
     if (response.data.car_img) {
