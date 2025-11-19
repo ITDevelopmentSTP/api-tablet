@@ -1,24 +1,19 @@
 import axios from '../../../config/axiosPatio.js'
+import Geotab from '../util/Geotab.js'
 
 export async function getFredByLicensePlate (req, res, next) {
   try {
     const response = await axios.post('getFredByLicensePlate', req.body)
 
-    const { GEOTAB_USER, GEOTAB_PASSWORD, GEOTAB_DATABASE } = process.env
-    const geotabPayload = {
-      method: 'GetOdometer',
-      credentials: {
-        database: GEOTAB_DATABASE,
-        userName: GEOTAB_USER,
-        password: GEOTAB_PASSWORD
-      },
-      plate: req.body.placa
-    }
-    const geotabOdometer = await axios.post('geotab', geotabPayload)
-    geotabPayload.method = 'GetFuelStatus'
-    const geotabFuel = await axios.post('geotab', geotabPayload)
-    response.data.km = geotabOdometer.data.km
-    response.data.gas = geotabFuel.data.fraction
+    // Crear instancia de Geotab
+    const objGeotab = new Geotab(req.body.placa)
+    // Obtener datos de odometro y combustible
+    const KmResponse = await objGeotab.fetchGeotabData('GetOdometer')
+    if (KmResponse) response.data.km = KmResponse.data.km // Asignar odómetro en caso de que la solicitud sea exitosa
+    const FuelResponse = await objGeotab.fetchGeotabData('GetFuelStatus')
+    if (FuelResponse) response.data.gas = FuelResponse.data.fraction // Asignar nivel de combustible en caso de que la solicitud sea exitosa
+    // De no ser exitosas, los valores se mantienenen a los anteriormente definidos
+
     let formattedBase64 = null
 
     if (response.data.car_img) {
