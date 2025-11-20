@@ -1,5 +1,5 @@
 import axios from '../../../config/axiosPatio.js'
-import Geotab from '../util/Geotab.js'
+import Geotab from '../../class/Geotab.js'
 
 export async function getCarByLicensePlate (req, res, next) {
   try {
@@ -28,10 +28,10 @@ export async function getCarForMovement (req, res, next) {
     // Crear instancia de Geotab
     const objGeotab = new Geotab(response.data.Auto.Placa)
     // Obtener datos de odometro y combustible
-    const KmResponse = await objGeotab.fetchGeotabData('GetOdometer')
-    if (KmResponse) response.data.Auto.KMS = KmResponse.data.km // Asignar odómetro en caso de que la solicitud sea exitosa
-    const FuelResponse = await objGeotab.fetchGeotabData('GetFuelStatus')
-    if (FuelResponse) response.data.Auto.Gas = FuelResponse.data.fraction // Asignar nivel de combustible en caso de que la solicitud sea exitosa
+    const KmResponse = await objGeotab.fetchOdometer()
+    if (KmResponse.geotab) response.data.Auto.KMS = KmResponse // Asignar odómetro en caso de que la solicitud sea exitosa
+    const FuelResponse = await objGeotab.fetchFuel()
+    if (FuelResponse.geotab) response.data.Auto.Gas = FuelResponse // Asignar nivel de combustible en caso de que la solicitud sea exitosa
     // De no ser exitosas, los valores se mantienenen a los anteriormente definidos
 
     return res.json(response.data)

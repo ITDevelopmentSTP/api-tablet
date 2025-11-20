@@ -1,17 +1,27 @@
 import axios from '../../../config/axiosPatio.js'
-import Geotab from '../util/Geotab.js'
+import Geotab from '../../class/Geotab.js'
 
 export async function getFredByLicensePlate (req, res, next) {
   try {
     const response = await axios.post('getFredByLicensePlate', req.body)
 
     // Crear instancia de Geotab
-    const objGeotab = new Geotab(req.body.placa)
+    const objGeotab = new Geotab(response.data.placa)
     // Obtener datos de odometro y combustible
-    const KmResponse = await objGeotab.fetchGeotabData('GetOdometer')
-    if (KmResponse) response.data.km = KmResponse.data.km // Asignar odómetro en caso de que la solicitud sea exitosa
-    const FuelResponse = await objGeotab.fetchGeotabData('GetFuelStatus')
-    if (FuelResponse) response.data.gas = FuelResponse.data.fraction // Asignar nivel de combustible en caso de que la solicitud sea exitosa
+    const KmResponse = await objGeotab.fetchOdometer()
+    if (KmResponse.geotab) {
+      response.data.km = KmResponse // Asignar odómetro en caso de que la solicitud sea exitosa
+    } else {
+      KmResponse.km = response.data.km // Mantener el valor anterior si la solicitud falla
+      response.data.km = KmResponse
+    }
+    const FuelResponse = await objGeotab.fetchFuel()
+    if (FuelResponse.geotab) {
+      response.data.gas = FuelResponse // Asignar nivel de combustible en caso de que la solicitud sea exitosa
+    } else {
+      FuelResponse.gas = response.data.gas // Mantener el valor anterior si la solicitud falla
+      response.data.gas = FuelResponse
+    }
     // De no ser exitosas, los valores se mantienenen a los anteriormente definidos
 
     let formattedBase64 = null
