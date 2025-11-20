@@ -26,7 +26,7 @@ export async function getCarForMovement (req, res, next) {
     const response = await axios.post('getCarForMovement', req.body)
 
     // Crear instancia de Geotab
-    const objGeotab = new Geotab(req.body.Auto)
+    const objGeotab = new Geotab(response.data.Auto.Placa)
     // Obtener datos de odometro y combustible
     const KmResponse = await objGeotab.fetchGeotabData('GetOdometer')
     if (KmResponse) response.data.Auto.KMS = KmResponse.data.km // Asignar odómetro en caso de que la solicitud sea exitosa
