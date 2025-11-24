@@ -8,21 +8,22 @@ export async function getFredByLicensePlate (req, res, next) {
     // Crear instancia de Geotab
     const objGeotab = new Geotab(response.data.placa)
     // Obtener datos de odometro y combustible
-    const KmResponse = await objGeotab.fetchOdometer()
-    if (KmResponse.geotab) {
-      response.data.km = KmResponse // Asignar odómetro en caso de que la solicitud sea exitosa
+    const geotabData = {}
+    geotabData.odometer = await objGeotab.fetchOdometer()
+    geotabData.fuel = await objGeotab.fetchFuel()
+    if (geotabData.odometer.geotab) {
+      response.data.km = geotabData.odometer.km // Asignar odómetro en caso de que la solicitud sea exitosa
     } else {
-      KmResponse.km = response.data.km // Mantener el valor anterior si la solicitud falla
-      response.data.km = KmResponse
+      geotabData.odometer.km = response.data.km // Mantener el valor anterior si la solicitud falla
     }
-    const FuelResponse = await objGeotab.fetchFuel()
-    if (FuelResponse.geotab) {
-      response.data.gas = FuelResponse // Asignar nivel de combustible en caso de que la solicitud sea exitosa
+    if (geotabData.fuel.geotab) {
+      response.data.gas = geotabData.fuel // Asignar nivel de combustible en caso de que la solicitud sea exitosa
     } else {
-      FuelResponse.gas = response.data.gas // Mantener el valor anterior si la solicitud falla
-      response.data.gas = FuelResponse
+      geotabData.fuel.gas = response.data.gas // Mantener el valor anterior si la solicitud falla
     }
     // De no ser exitosas, los valores se mantienenen a los anteriormente definidos
+
+    response.data.geotab = geotabData // Agregar los datos de Geotab a la respuesta
 
     let formattedBase64 = null
 
