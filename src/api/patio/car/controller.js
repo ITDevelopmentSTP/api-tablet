@@ -37,12 +37,12 @@ export async function getCarForMovement (req, res, next) {
       geotabData.odometer.km = response.data.Auto.KMS // Mantener el valor anterior si la solicitud falla
     }
     if (geotabData.fuel.geotab) {
-      response.data.Auto.Gas = geotabData.fuel // Asignar nivel de combustible en caso de que la solicitud sea exitosa
+      response.data.Auto.Gas = geotabData.fuel.gas // Asignar nivel de combustible en caso de que la solicitud sea exitosa
     } else {
       geotabData.fuel.gas = response.data.Auto.Gas // Mantener el valor anterior si la solicitud falla
     }
     // De no ser exitosas, los valores se mantienenen a los anteriormente definidos
-    response.data.geotab = geotabData // Agregar los datos de Geotab a la respuesta
+    response.data.Auto.geotab = geotabData // Agregar los datos de Geotab a la respuesta
 
     return res.json(response.data)
   } catch (error) {

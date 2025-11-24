@@ -17,7 +17,7 @@ export async function getFredByLicensePlate (req, res, next) {
       geotabData.odometer.km = response.data.km // Mantener el valor anterior si la solicitud falla
     }
     if (geotabData.fuel.geotab) {
-      response.data.gas = geotabData.fuel // Asignar nivel de combustible en caso de que la solicitud sea exitosa
+      response.data.gas = geotabData.fuel.gas // Asignar nivel de combustible en caso de que la solicitud sea exitosa
     } else {
       geotabData.fuel.gas = response.data.gas // Mantener el valor anterior si la solicitud falla
     }
