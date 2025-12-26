@@ -19,7 +19,7 @@ export const zonesController = {
       const result = await conn.callProcedure('sp_registrarPaso', [params.zoneId, params.deviceName, dateTime])
       const plate = params.deviceName
       const currentZone = params.zoneId
-      const special = new Set(['b15', 'b16', 'b17'])
+      const special = new Set(['b12', 'b13', 'b14'])
 
       let handledSpecial = false
 
@@ -28,8 +28,8 @@ export const zonesController = {
         if (prev) {
           // Tenemos un par previo+actual, aplicar reglas similares a regSpecialCasesmot
           // Para actualizar la fila correcta, consultamos los últimos 1-2 pasos de la placa
-          if ((prev === 'b15' && currentZone === 'b16') ||
-              (prev === 'b16' && (currentZone === 'b15' || currentZone === 'b17'))) {
+          if ((prev === 'b12' && currentZone === 'b13') ||
+              (prev === 'b13' && (currentZone === 'b12' || currentZone === 'b14'))) {
             // Debe marcarse NO cobrar el paso actual (el más reciente)
             const rows = await conn.query(
               'SELECT id FROM pasos WHERE placa = ? AND procesado = 0 ORDER BY fechaHora DESC LIMIT 2',
@@ -47,7 +47,7 @@ export const zonesController = {
               )
             }
             handledSpecial = true
-          } else if (prev === 'b17' && currentZone === 'b16') {
+          } else if (prev === 'b14' && currentZone === 'b13') {
             // Debe marcarse NO cobrar el paso anterior (el segundo más reciente)
             const rows = await conn.query(
               'SELECT id FROM pasos WHERE placa = ? AND procesado = 0 ORDER BY fechaHora DESC LIMIT 2',
