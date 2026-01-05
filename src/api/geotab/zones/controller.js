@@ -1,8 +1,8 @@
 import Connection from '../util/Connection.js'
 import DateTime from '../util/dateTime.js'
 
-// Mapa en memoria para recordar el último paso especial por placa
-// Clave: plate | Valor: id_zona del último paso especial pendiente
+// Mapa en memoria para recordar el historial de zonas especiales por placa
+// Estructura: [zona1, zona2, ...] - historial de zonas especiales consecutivas
 const pendingSpecialByPlate = new Map()
 
 export const zonesController = {
@@ -19,74 +19,168 @@ export const zonesController = {
       const result = await conn.callProcedure('sp_registrarPaso', [params.zoneId, params.deviceName, dateTime])
       const plate = params.deviceName
       const currentZone = params.zoneId
-      const special = new Set(['b15', 'b16', 'b17'])
+      /*
+      * B12 - Ascanio Villalaz (Entrada) - desde Albrook
+      * B13 - Ascanio Villalaz (Salida) - hacia Albrook
+      * B14 - Martin Sosa
+      *
+      * Casos especiales:
+      * 1. b12 cobra -> b13 no cobra
+      * 2. b13 cobra -> b12 no cobra
+      * 3. b12 cobra -> b13 no cobra -> b14 no cobra
+      * 4. b14 no cobra -> b13 cobra -> b12 no cobra
+      * 5. id random cobra -> b14 cobra
+      * 6. b14 cobra -> id random cobra
+      */
+      const special = new Set(['b12', 'b13', 'b14'])
 
       let handledSpecial = false
+      const history = pendingSpecialByPlate.get(plate) || []
 
-      if (plate && special.has(currentZone)) {
-        const prev = pendingSpecialByPlate.get(plate)
-        if (prev) {
-          // Tenemos un par previo+actual, aplicar reglas similares a regSpecialCasesmot
-          // Para actualizar la fila correcta, consultamos los últimos 1-2 pasos de la placa
-          if ((prev === 'b15' && currentZone === 'b16') ||
-              (prev === 'b16' && (currentZone === 'b15' || currentZone === 'b17'))) {
-            // Debe marcarse NO cobrar el paso actual (el más reciente)
-            const rows = await conn.query(
-              'SELECT id FROM pasos WHERE placa = ? AND procesado = 0 ORDER BY fechaHora DESC LIMIT 2',
-              [plate]
-            )
-            if (rows && rows.length >= 1) {
-              const currentId = rows[0].id
-              await conn.query('UPDATE pasos SET cobrar = 0 WHERE id = ?', [currentId])
-              // Marcar ambos (actual y previo si existe) como procesados
-              const idsToMark = rows.map(r => r.id)
-              const placeholders = idsToMark.map(() => '?').join(',')
-              await conn.query(
-                `UPDATE pasos SET procesado = 1 WHERE id IN (${placeholders})`,
-                idsToMark
-              )
-            }
-            handledSpecial = true
-          } else if (prev === 'b17' && currentZone === 'b16') {
-            // Debe marcarse NO cobrar el paso anterior (el segundo más reciente)
-            const rows = await conn.query(
-              'SELECT id FROM pasos WHERE placa = ? AND procesado = 0 ORDER BY fechaHora DESC LIMIT 2',
-              [plate]
-            )
-            if (rows && rows.length === 2) {
-              const previousId = rows[1].id
-              await conn.query('UPDATE pasos SET cobrar = 0 WHERE id = ?', [previousId])
-              // Marcar ambos como procesados
-              const idsToMark = [rows[0].id, rows[1].id]
-              await conn.query(
-                'UPDATE pasos SET procesado = 1 WHERE id IN (?, ?)',
-                idsToMark
-              )
-            }
-            handledSpecial = true
-          }
-
-          // Limpiar pendiente tras resolver
-          pendingSpecialByPlate.delete(plate)
-        } else {
-          // Es un caso especial inicial: almacenar y esperar a la próxima llamada
-          pendingSpecialByPlate.set(plate, currentZone)
-
-          // Devolver sin seguir (diferimos la actualización en tiempo real)
-          res.json({ success: true, data: result, deferred: true, reason: 'pending special case' })
-          return
-        }
+      // Helper para marcar pasos como procesados
+      const markProcessed = async (ids) => {
+        if (ids.length === 0) return
+        const placeholders = ids.map(() => '?').join(',')
+        await conn.query(`UPDATE pasos SET procesado = 1 WHERE id IN (${placeholders})`, ids)
       }
 
-      // Ejecutar actualización en tiempo real tras insertar (o tras resolver el par especial)
-      // Si no fue un caso especial diferido y no se resolvió par especial,
-      // marcar el último paso (recién insertado) como procesado para no re-evaluarlo.
-      if (!special.has(currentZone) && plate) { // No es especial, marcar el último paso como procesado
-        const last = await conn.query(
-          'SELECT id FROM pasos WHERE placa = ? AND procesado = 0 ORDER BY fechaHora DESC LIMIT 1',
+      // Helper para marcar pasos como no cobrar
+      const markNoCobrar = async (ids) => {
+        if (ids.length === 0) return
+        const placeholders = ids.map(() => '?').join(',')
+        await conn.query(`UPDATE pasos SET cobrar = 0 WHERE id IN (${placeholders})`, ids)
+      }
+
+      // Helper para obtener los últimos N pasos no procesados
+      const getLastUnprocessed = async (limit) => {
+        return await conn.query(
+          'SELECT id, id_zona FROM pasos WHERE placa = ? AND procesado = 0 ORDER BY fechahora DESC LIMIT ?',
+          [plate, limit]
+        ) || []
+      }
+
+      if (plate && special.has(currentZone)) {
+        // Agregar zona actual al historial
+        history.push(currentZone)
+        const len = history.length
+
+        // Verificar patrones de 3 zonas primero
+        if (len >= 3) {
+          const [z1, z2, z3] = history.slice(-3)
+
+          // Caso: b12 -> b13 -> b14 (b12 cobra, b13 no cobra, b14 no cobra)
+          if (z1 === 'b12' && z2 === 'b13' && z3 === 'b14') {
+            const rows = await getLastUnprocessed(3)
+            if (rows.length >= 1) {
+              // b14 actual no cobra
+              await markNoCobrar([rows[0].id])
+              // Marcar todos como procesados
+              await markProcessed(rows.map(r => r.id))
+            }
+            pendingSpecialByPlate.delete(plate)
+            handledSpecial = true
+          }
+          // Caso: b14 -> b13 -> b12 (b14 no cobra, b13 cobra, b12 no cobra)
+          else if (z1 === 'b14' && z2 === 'b13' && z3 === 'b12') {
+            const rows = await getLastUnprocessed(3)
+            if (rows.length >= 1) {
+              // b12 actual no cobra
+              await markNoCobrar([rows[0].id])
+              // Marcar todos como procesados
+              await markProcessed(rows.map(r => r.id))
+            }
+            pendingSpecialByPlate.delete(plate)
+            handledSpecial = true
+          }
+        }
+
+        // Verificar patrones de 2 zonas si no se manejó con 3
+        if (!handledSpecial && len >= 2) {
+          const [z1, z2] = history.slice(-2)
+
+          // Caso: b12 -> b13 (b12 cobra, b13 no cobra) - puede continuar a b14
+          if (z1 === 'b12' && z2 === 'b13') {
+            const rows = await getLastUnprocessed(2)
+            if (rows.length >= 1) {
+              // b13 actual no cobra
+              await markNoCobrar([rows[0].id])
+              // Marcar b12 como procesado, b13 queda pendiente para posible b14
+              if (rows.length >= 2) {
+                await markProcessed([rows[1].id])
+              }
+            }
+            // Mantener historial para posible continuación a b14
+            pendingSpecialByPlate.set(plate, history)
+            handledSpecial = true
+          }
+          // Caso: b13 -> b12 (b13 cobra, b12 no cobra)
+          else if (z1 === 'b13' && z2 === 'b12') {
+            const rows = await getLastUnprocessed(2)
+            if (rows.length >= 1) {
+              // b12 actual no cobra
+              await markNoCobrar([rows[0].id])
+              // Marcar ambos como procesados
+              await markProcessed(rows.map(r => r.id))
+            }
+            pendingSpecialByPlate.delete(plate)
+            handledSpecial = true
+          }
+          // Caso: b14 -> b13 (b14 no cobra, b13 cobra) - puede continuar a b12
+          else if (z1 === 'b14' && z2 === 'b13') {
+            const rows = await getLastUnprocessed(2)
+            if (rows.length >= 2) {
+              // b14 (el anterior) no cobra
+              await markNoCobrar([rows[1].id])
+              // Marcar b14 como procesado, b13 queda pendiente para posible b12
+              await markProcessed([rows[1].id])
+            }
+            // Mantener historial para posible continuación a b12
+            pendingSpecialByPlate.set(plate, history)
+            handledSpecial = true
+          }
+        }
+
+        // Si no matcheó ningún patrón especial, guardar historial y no procesar aún
+        if (!handledSpecial) {
+          pendingSpecialByPlate.set(plate, history)
+          // No marcar como procesado, queda pendiente
+        }
+
+      } else if (plate && !special.has(currentZone)) {
+        // Zona NO especial (id random)
+
+        // Caso: id random -> b14 cobra (ya cobra por defecto, solo limpiar historial anterior)
+        // Caso: b14 -> id random (ambos cobran, limpiar historial)
+        // Cualquier zona no especial rompe la secuencia
+
+        // Marcar todos los pasos especiales pendientes como procesados (cobran por defecto)
+        if (history.length > 0) {
+          const rows = await getLastUnprocessed(history.length)
+          if (rows.length > 0) {
+            await markProcessed(rows.map(r => r.id))
+          }
+          pendingSpecialByPlate.delete(plate)
+        }
+        
+        // Marcar la zona no especial actual como procesada (siempre cobra)
+        const currentRow = await conn.query(
+          'SELECT id FROM pasos WHERE placa = ? AND procesado = 0 ORDER BY fechahora DESC LIMIT 1',
           [plate]
         )
-        if (last) {
+        if (currentRow && currentRow.length > 0) {
+          await markProcessed([currentRow[0].id])
+        }
+        handledSpecial = true
+      }
+
+      // Ejecutar actualización en tiempo real tras insertar
+      // Si es zona no especial y no fue manejada, marcar como procesado
+      if (!special.has(currentZone) && plate && !handledSpecial) {
+        const last = await conn.query(
+          'SELECT id FROM pasos WHERE placa = ? AND procesado = 0 ORDER BY fechahora DESC LIMIT 1',
+          [plate]
+        )
+        if (last && last.length > 0) {
           await conn.query('UPDATE pasos SET procesado = 1 WHERE id = ?', [last[0].id])
         }
       }
