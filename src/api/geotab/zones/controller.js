@@ -79,9 +79,8 @@ export const zonesController = {
             }
             pendingSpecialByPlate.delete(plate)
             handledSpecial = true
-          }
-          // Caso: b14 -> b13 -> b12 (b14 no cobra, b13 cobra, b12 no cobra)
-          else if (z1 === 'b14' && z2 === 'b13' && z3 === 'b12') {
+          } else if (z1 === 'b14' && z2 === 'b13' && z3 === 'b12') {
+            // Caso: b14 -> b13 -> b12 (b14 no cobra, b13 cobra, b12 no cobra)
             const rows = await getLastUnprocessed(3)
             if (rows.length >= 1) {
               // b12 actual no cobra
@@ -112,9 +111,8 @@ export const zonesController = {
             // Mantener historial para posible continuación a b14
             pendingSpecialByPlate.set(plate, history)
             handledSpecial = true
-          }
-          // Caso: b13 -> b12 (b13 cobra, b12 no cobra)
-          else if (z1 === 'b13' && z2 === 'b12') {
+          } else if (z1 === 'b13' && z2 === 'b12') {
+            // Caso: b13 -> b12 (b13 cobra, b12 no cobra)
             const rows = await getLastUnprocessed(2)
             if (rows.length >= 1) {
               // b12 actual no cobra
@@ -124,9 +122,8 @@ export const zonesController = {
             }
             pendingSpecialByPlate.delete(plate)
             handledSpecial = true
-          }
-          // Caso: b14 -> b13 (b14 no cobra, b13 cobra) - puede continuar a b12
-          else if (z1 === 'b14' && z2 === 'b13') {
+          } else if (z1 === 'b14' && z2 === 'b13') {
+            // Caso: b14 -> b13 (b14 no cobra, b13 cobra) - puede continuar a b12
             const rows = await getLastUnprocessed(2)
             if (rows.length >= 2) {
               // b14 (el anterior) no cobra
