@@ -1,5 +1,6 @@
 import axios from '../../../config/axiosPatio.js'
 import Geotab from '../../class/Geotab.js'
+import FTPManager from '../../class/FTPManager.js'
 
 export async function getFredByLicensePlate (req, res, next) {
   try {
@@ -107,33 +108,39 @@ export async function sendFredEmail (req, res, next) {
   }
 }
 
-/**
- * Methods 👇 (Not controllers)
-*/
-
 export async function uploadFredImage (dir = '', base64 = '', fileName = 'fred') {
-  const replacedDir = dir.replace(/\//g, '\\')
-  const mime = base64.match(/^data:(.*?);base64,/)[1]
-  const extension = mime.split('/')[1]
-  const cleanedBase64 = base64.replace(/^data:(.*?);base64,/, '')
-
-  const data = {
-    dir: replacedDir,
-    fileName,
-    fileExtension: '.' + extension,
-    base64: cleanedBase64
+  const uploader = new FTPManager({
+    host: process.env.FTP_HOST,
+    user: process.env.FTP_USER,
+    password: process.env.FTP_PASSWORD,
+    port: process.env.FTP_PORT
+  })
+  const options = {
+    createDirectories: true
   }
-
   try {
-    const response = await axios.post('uploadFredImage', data)
-
-    return response.data
+    const result = await uploader.postFTP(base64, dir, fileName, options)
+    console.log('FTP upload success:', result)
+    return result
   } catch (error) {
-    console.error(error)
+    console.error('FTP upload failed:', error.message)
   }
 }
 
 export async function getFredImage (dir = '', fileName = 'fred', fileExtension = 'png') {
+  // const downloader = new FTPManager({
+  //   host: process.env.FTP_HOST,
+  //   user: process.env.FTP_USER,
+  //   password: process.env.FTP_PASSWORD,
+  //   port: process.env.FTP_PORT
+  // })
+  // try {
+  //   const result = await downloader.getFTP(dir, fileName, fileExtension)
+  //   console.log('FTP download success:', result)
+  //   return result
+  // } catch (error) {
+  //   console.error('FTP download failed:', error.message)
+  // }
   const data = {
     dir: dir.replace(/\//g, '\\'),
     fileName,
