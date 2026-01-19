@@ -148,7 +148,6 @@ class FTPManager {
       const dataUrl = `data:${mimeType};base64,${fileBuffer.toString('base64')}`
 
       client.close()
-      console.log('FTP download success:', remotePath)
       return dataUrl
     } catch (error) {
       console.error('FTP download error:', error)

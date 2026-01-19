@@ -120,7 +120,6 @@ export async function uploadFredImage (dir = '', base64 = '', fileName = 'fred')
   }
   try {
     const result = await uploader.postFTP(base64, dir, fileName, options)
-    console.log('FTP upload success:', result)
     return result
   } catch (error) {
     console.error('FTP upload failed:', error.message)
@@ -128,31 +127,16 @@ export async function uploadFredImage (dir = '', base64 = '', fileName = 'fred')
 }
 
 export async function getFredImage (dir = '', fileName = 'fred', fileExtension = 'png') {
-  // const downloader = new FTPManager({
-  //   host: process.env.FTP_HOST,
-  //   user: process.env.FTP_USER,
-  //   password: process.env.FTP_PASSWORD,
-  //   port: process.env.FTP_PORT
-  // })
-  // try {
-  //   const result = await downloader.getFTP(dir, fileName, fileExtension)
-  //   console.log('FTP download success:', result)
-  //   return result
-  // } catch (error) {
-  //   console.error('FTP download failed:', error.message)
-  // }
-  const data = {
-    dir: dir.replace(/\//g, '\\'),
-    fileName,
-    fileExtension: '.' + fileExtension
-  }
-
+  const downloader = new FTPManager({
+    host: process.env.FTP_HOST,
+    user: process.env.FTP_USER,
+    password: process.env.FTP_PASSWORD,
+    port: process.env.FTP_PORT
+  })
   try {
-    const base64 = await axios.post('getFredImage', data)
-    const formattedBase64 = `data:image/png;base64,${base64.data.image}`
-
-    return formattedBase64
+    const result = await downloader.getFTP(dir, fileName, fileExtension)
+    return result
   } catch (error) {
-    console.error(error)
+    console.error('FTP download failed:', error.message)
   }
 }
