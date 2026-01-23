@@ -1,6 +1,8 @@
 import axios from '../../../config/axiosPatio.js'
 import Geotab from '../../class/Geotab.js'
 import FTPManager from '../../class/FTPManager.js'
+import PDFBuilder from '../../class/PDFBuilder.js'
+import freddPdf from '../../views/pdf/freddPdf.js'
 
 export async function getFredByLicensePlate (req, res, next) {
   try {
@@ -94,14 +96,38 @@ export async function saveFred (req, res, next) {
 
 export async function sendFredEmail (req, res, next) {
   try {
+    // Paso 1: Envía los datos del contrato y obtiene la respuesta
+    const response = await axios.post('sendFredEmail', req.body)
+    const data = response.data.data
+
+    // Paso 2: Si existe firma digital en la petición, la sube al servidor
     if (req.body.firmaFredd) {
-      await uploadFredImage(req.body.ruta, req.body.firmaFredd, 'Firma_Digital')
+      await uploadFredImage(data.ruta, req.body.firmaFredd, 'Firma_Digital')
     }
 
-    const response = await axios.post('sendFredEmail', req.body)
+    // Paso 3: Recupera las imágenes remotas para insertarlas en el PDF
+    const digitalSignature = await getFredImage(data.ruta, 'Firma_Digital', 'png')
+    const imageFredd = await getFredImage(data.ruta, 'fred', 'png')
 
-    return res.json(response.data)
+    // Paso 4: Genera PDF en base64 con la información recibida y las imágenes
+    const fileNamePdf = 'FREDD' + data.contrato
+    const pdfBase64 = await PDFBuilder.toBase64(doc => {
+      freddPdf(doc, {
+        ...data,
+        digitalSignature,
+        imageFredd
+      })
+    })
+
+    // Paso 5: Sube el PDF al servidor en la ruta asociada
+    await uploadFredPdf(data.ruta, pdfBase64, fileNamePdf)
+
+    // Paso 6: Notifica al cliente enviando correo y retorna un mensaje de éxito
+    const result = await axios.post('sendFreddClient', data)
+
+    return res.json(result.mensaje)
   } catch (error) {
+    // Manejo de errores centralizado de la función tipo middleware de Express
     next(error)
   }
 }
@@ -136,5 +162,25 @@ export async function getFredImage (dir = '', fileName = 'fred', fileExtension =
     return result
   } catch (error) {
     console.error('FTP download failed:', error.message)
+  }
+}
+
+export async function uploadFredPdf (dir = '', base64 = '', fileName = '') {
+  const uploader = new FTPManager({
+    host: process.env.FTP_HOST,
+    user: process.env.FTP_USER,
+    password: process.env.FTP_PASSWORD,
+    port: process.env.FTP_PORT
+  })
+
+  const options = {
+    createDirectories: true
+  }
+
+  try {
+    const result = await uploader.postFTP(base64, dir, fileName, options)
+    return result
+  } catch (error) {
+    console.log('FTP upload failed: ', error.message)
   }
 }
