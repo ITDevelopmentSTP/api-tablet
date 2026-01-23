@@ -43,9 +43,8 @@ class Geotab {
 
   // Metodos
   // Armar payload automatico para solicitud a Geotab
-  buildPayload (m) {
+  buildPayload () {
     return {
-      method: m,
       credentials: this.credentials,
       plate: this.plate
     }
@@ -58,38 +57,57 @@ class Geotab {
 
   // Solicitudes a Geotab
   // Odometro
-  async fetchOdometer () {
+  async fetchCarData () {
     this.clearPayload() // Limpiar payload previo
-    this.payload = this.buildPayload('GetOdometer')
+    this.setPayload(this.buildPayload()) // Armar nuevo payload
     const data = await axios.post('geotab', this.payload)
-    const response = { // Estructura de respuesta
-      km: null,
-      time: null,
-      geotab: false
+    // Estructura de respuesta unificada
+    const response = {
+      odometer: {
+        km: null,
+        time: null,
+        geotab: false
+      },
+      fuel: {
+        gas: null,
+        time: null,
+        geotab: false
+      },
+      overall: {
+        geotab: false,
+        code: null,
+        timestamp: null
+      }
     }
-    if (data.data.code === 200) {
-      response.km = data.data.km
-      response.time = data.data.time
-      response.geotab = true
-    }
-    return response
-  }
 
-  // Combustible
-  async fetchFuel () {
-    this.clearPayload() // Limpiar payload previo
-    this.payload = this.buildPayload('GetFuelStatus')
-    const data = await axios.post('geotab', this.payload)
-    const response = { // Estructura de respuesta
-      gas: null,
-      time: null,
-      geotab: false
-    }
+    // Asignar datos generales
     if (data.data.code === 200) {
-      response.gas = data.data.fraction
-      response.time = data.data.time
-      response.geotab = true
+      response.overall.geotab = true
+      response.overall.code = data.data.code
+      response.overall.timestamp = data.data.timestamp
+      response.overall.plate = data.data.plate
+
+      // Asignar datos de odómetro
+      if (data.data.odometer && data.data.odometer.code === 200) {
+        response.odometer.km = data.data.odometer.km
+        response.odometer.time = data.data.odometer.lastUpdate
+        response.odometer.geotab = true
+        response.odometer.deviceId = data.data.odometer.deviceId
+      }
+
+      // Asignar datos de combustible
+      if (data.data.fuel && data.data.fuel.code === 200) {
+        response.fuel.gas = data.data.fuel.fraction
+        response.fuel.time = data.data.fuel.lastUpdate
+        response.fuel.geotab = true
+        response.fuel.liters = data.data.fuel.liters
+        response.fuel.tankCapacity = data.data.fuel.tankCapacity
+        response.fuel.eights = data.data.fuel.eights
+      }
+    } else if (data.data.code === 500 && data.data.error) {
+      response.overall.error = data.data.error
     }
+
     return response
   }
 }
