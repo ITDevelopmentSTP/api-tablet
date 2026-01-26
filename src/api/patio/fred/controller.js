@@ -1,5 +1,5 @@
 import axios from '../../../config/axiosPatio.js'
-import Geotab from '../../class/Geotab.js'
+// import Geotab from '../../class/Geotab.js'
 import FTPManager from '../../class/FTPManager.js'
 import PDFBuilder from '../../class/PDFBuilder.js'
 import freddPdf from '../../views/pdf/freddPdf.js'
@@ -8,23 +8,23 @@ export async function getFredByLicensePlate (req, res, next) {
   try {
     const response = await axios.post('getFredByLicensePlate', req.body)
 
-    // Crear instancia de Geotab
-    const objGeotab = new Geotab(response.data.placa)
-    // Obtener datos de odometro y combustible
-    const geotabData = await objGeotab.fetchCarData()
-    if (geotabData.odometer.geotab) {
-      response.data.km = geotabData.odometer.km // Asignar odómetro en caso de que la solicitud sea exitosa
-    } else {
-      geotabData.odometer.km = response.data.km // Mantener el valor anterior si la solicitud falla
-    }
-    if (geotabData.fuel.geotab) {
-      response.data.gas = geotabData.fuel.gas // Asignar nivel de combustible en caso de que la solicitud sea exitosa
-    } else {
-      geotabData.fuel.gas = response.data.gas // Mantener el valor anterior si la solicitud falla
-    }
-    // De no ser exitosas, los valores se mantienenen a los anteriormente definidos
+    // // Crear instancia de Geotab
+    // const objGeotab = new Geotab(response.data.placa)
+    // // Obtener datos de odometro y combustible
+    // const geotabData = await objGeotab.fetchCarData()
+    // if (geotabData.odometer.geotab) {
+    //   response.data.km = geotabData.odometer.km // Asignar odómetro en caso de que la solicitud sea exitosa
+    // } else {
+    //   geotabData.odometer.km = response.data.km // Mantener el valor anterior si la solicitud falla
+    // }
+    // if (geotabData.fuel.geotab) {
+    //   response.data.gas = geotabData.fuel.gas // Asignar nivel de combustible en caso de que la solicitud sea exitosa
+    // } else {
+    //   geotabData.fuel.gas = response.data.gas // Mantener el valor anterior si la solicitud falla
+    // }
+    // // De no ser exitosas, los valores se mantienenen a los anteriormente definidos
 
-    response.data.geotab = geotabData // Agregar los datos de Geotab a la respuesta
+    // response.data.geotab = geotabData // Agregar los datos de Geotab a la respuesta
 
     let formattedBase64 = null
 
