@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import {
+  getCar,
   getCarByLicensePlate,
   getCarForMovement,
   getCarsByAgency,
@@ -10,6 +11,7 @@ import {
 const router = Router()
 
 router
+  .post('/getCar', getCar)
   .post('/getCarByLicensePlate', getCarByLicensePlate)
   .post('/getCarsByAgency', getCarsByAgency)
   .post('/getCarForMovement', getCarForMovement)

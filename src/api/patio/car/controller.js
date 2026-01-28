@@ -1,5 +1,6 @@
 import axios from '../../../config/axiosPatio.js'
 import Geotab from '../../class/Geotab.js'
+import FTPManager from '../../class/FTPManager.js'
 
 export async function getCarByLicensePlate (req, res, next) {
   try {
@@ -67,5 +68,55 @@ export async function saveCarInventory (req, res, next) {
     return res.json(response.data)
   } catch (error) {
     next(error)
+  }
+}
+
+export async function getCar (req, res, next) {
+  try {
+    const response = await axios.post('getCar', req.body)
+
+    const objGeotab = new Geotab(response.data.placa)
+    const geotabData = {}
+
+    geotabData.odometer = await objGeotab.fetchOdometer()
+    geotabData.fuel = await objGeotab.fetchFuel()
+    if (geotabData.odometer.geotab) {
+      response.data.lastFredd.km = geotabData.odometer.km
+    } else {
+      geotabData.odometer.km = response.data.lastFredd.km
+    }
+    if (geotabData.fuel.geotab) {
+      response.data.lastFredd.gas = geotabData.fuel.gas
+    } else {
+      geotabData.fuel.gas = response.data.lastFredd.gas
+    }
+
+    response.data.lastFredd.geotab = geotabData
+
+    let formattedBase64 = null
+    if (response.data.lastFredd.car_img) {
+      formattedBase64 = await getFredImage(response.data.lastFredd.car_img, 'fred', 'png')
+    }
+
+    response.data.lastFredd.fred = formattedBase64
+
+    return res.json({ ...response.data })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function getFredImage (dir = '', fileName = 'fred', fileExtension = 'png') {
+  const downloader = new FTPManager({
+    host: process.env.FTP_HOST,
+    user: process.env.FTP_USER,
+    password: process.env.FTP_PASSWORD,
+    port: process.env.FTP_PORT
+  })
+  try {
+    const result = await downloader.getFTP(dir, fileName, fileExtension)
+    return result
+  } catch (error) {
+    console.error('FTP download failed:', error.message)
   }
 }
