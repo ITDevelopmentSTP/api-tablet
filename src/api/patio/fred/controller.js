@@ -11,9 +11,7 @@ export async function getFredByLicensePlate (req, res, next) {
     // Crear instancia de Geotab
     const objGeotab = new Geotab(response.data.placa)
     // Obtener datos de odometro y combustible
-    const geotabData = {}
-    geotabData.odometer = await objGeotab.fetchOdometer()
-    geotabData.fuel = await objGeotab.fetchFuel()
+    const geotabData = await objGeotab.fetchCarData()
     if (geotabData.odometer.geotab) {
       response.data.km = geotabData.odometer.km // Asignar odómetro en caso de que la solicitud sea exitosa
     } else {
