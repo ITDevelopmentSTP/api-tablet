@@ -73,23 +73,22 @@ export async function getCar (req, res, next) {
   try {
     const response = await axios.post('getCar', req.body)
 
+    // Crear instancia de Geotab
     const objGeotab = new Geotab(response.data.placa)
-    const geotabData = {}
-
-    geotabData.odometer = await objGeotab.fetchOdometer()
-    geotabData.fuel = await objGeotab.fetchFuel()
+    // Obtener datos de odometro y combustible
+    const geotabData = await objGeotab.fetchCarData()
     if (geotabData.odometer.geotab) {
-      response.data.lastFredd.km = geotabData.odometer.km
+      response.data.lastFredd.km = geotabData.odometer.km // Asignar odómetro en caso de que la solicitud sea exitosa
     } else {
-      geotabData.odometer.km = response.data.lastFredd.km
+      geotabData.odometer.km = response.data.lastFredd.km // Mantener el valor anterior si la solicitud falla
     }
     if (geotabData.fuel.geotab) {
-      response.data.lastFredd.gas = geotabData.fuel.gas
+      response.data.lastFredd.gas = geotabData.fuel.gas // Asignar nivel de combustible en caso de que la solicitud sea exitosa
     } else {
-      geotabData.fuel.gas = response.data.lastFredd.gas
+      geotabData.fuel.gas = response.data.lastFredd.gas // Mantener el valor anterior si la solicitud falla
     }
-
-    response.data.lastFredd.geotab = geotabData
+    // De no ser exitosas, los valores se mantienenen a los anteriormente definidos
+    response.data.lastFredd.geotab = geotabData // Agregar los datos de Geotab a la respuesta
 
     let formattedBase64 = null
     if (response.data.lastFredd.car_img) {
@@ -97,7 +96,6 @@ export async function getCar (req, res, next) {
     }
 
     response.data.lastFredd.fred = formattedBase64
-
     return res.json({ ...response.data })
   } catch (error) {
     next(error)
